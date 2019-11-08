@@ -12,6 +12,8 @@ module ContextRequestMiddleware
       request = ContextRequestMiddleware.request_class.new(env)
       request(request) if valid_sample?(request)
       status, header, body = @app.call(env)
+      # temporary
+      @event_at = env['action_controller.instance'].instance_variable_get(:@page).instance_variable_get(:@start_time)
       if valid_sample?(request)
         response(status, header, body)
         @context = context(status, header, body, request)
@@ -35,7 +37,10 @@ module ContextRequestMiddleware
       @data[:request_context] = request_context(request)
       @data[:request_start_time] = request_start_time(request)
       @data[:request_method] = request.request_method
-      @data[:request_params] = request.params
+
+      # quick fix regarding subscriber JsonApiClient -> Resource class
+      # request_params attribute is empty when saving a resource
+      @data[:request_parameters] = request.params
       @data[:request_path] = request.path
     end
 
@@ -51,6 +56,8 @@ module ContextRequestMiddleware
     # checks if this request changed the context
     def context(status, header, body, request)
       @context = context_retriever(request)&.call(status, header, body)
+      @new_context = context_retriever(request)&.new_session_id?
+
       @data[:request_context] = @context[:context_id] \
         if @context && @context[:context_id]
       @context
@@ -77,6 +84,8 @@ module ContextRequestMiddleware
       return unless @context
       return unless @context.any?
 
+      return unless @new_context
+
       @push_handler.push(@context, push_options(@data, 'context'))
       nil
     end
@@ -98,10 +107,12 @@ module ContextRequestMiddleware
     end
 
     def request_start_time(request)
-      ContextRequestMiddleware.select_request_headers(
-        ContextRequestMiddleware.request_start_time_headers,
-        request
-      )
+      @event_at
+      # these headers are missing for some reasone
+      # ContextRequestMiddleware.select_request_headers(
+      #   ContextRequestMiddleware.request_start_time_headers,
+      #   request
+      # )
     end
 
     def source(request)
