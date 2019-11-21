@@ -40,7 +40,7 @@ module ContextRequestMiddleware
 
       # quick fix regarding subscriber JsonApiClient -> Resource class
       # request_params attribute is empty when saving a resource
-      @data[:request_parameters] = request.params
+      @data[:request_params] = request.params
       @data[:request_path] = request.path
     end
 
