@@ -107,12 +107,12 @@ module ContextRequestMiddleware
     end
 
     def request_start_time(request)
-      @event_at
+      # @event_at
       # these headers are missing for some reasone
-      # ContextRequestMiddleware.select_request_headers(
-      #   ContextRequestMiddleware.request_start_time_headers,
-      #   request
-      # )
+      ContextRequestMiddleware.select_request_headers(
+        ContextRequestMiddleware.request_start_time_headers,
+        request
+      ) || Time.current
     end
 
     def source(request)
