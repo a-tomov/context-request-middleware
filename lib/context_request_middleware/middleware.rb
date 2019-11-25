@@ -51,6 +51,8 @@ module ContextRequestMiddleware
     # checks if this request changed the context
     def context(status, header, body, request)
       @context = context_retriever(request)&.call(status, header, body)
+      @new_context = context_retriever(request)&.new_session_id?
+
       @data[:request_context] = @context[:context_id] \
         if @context && @context[:context_id]
       @context
@@ -76,6 +78,8 @@ module ContextRequestMiddleware
       @push_handler.push(@data, push_options(@data, 'request'))
       return unless @context
       return unless @context.any?
+
+      return unless @new_context
 
       @push_handler.push(@context, push_options(@data, 'context'))
       nil
