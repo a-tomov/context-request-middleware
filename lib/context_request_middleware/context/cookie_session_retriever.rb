@@ -20,7 +20,7 @@ module ContextRequestMiddleware
 
       def call(status, header, body)
         @response = Rack::Response.new(body, status, header)
-        if new_session_id?
+        if context_changed?
           data[:context_id] = session_id
           data[:owner_id] = owner_id
           data[:context_status] = context_status
@@ -30,14 +30,10 @@ module ContextRequestMiddleware
         data
       end
 
-      # returns if current request sets a new session id - used to send a context message
-      def new_session_id?
-        setting_session_id_now && setting_session_id_now != request_cookie_session_id
-      end
       private
 
       def owner_id
-        from_env('cookie_session.user_uuid', 'unknown')
+        from_env(ContextRequestMiddleware.session_owner_id, 'unknown')
       end
 
       def context_status
@@ -48,8 +44,13 @@ module ContextRequestMiddleware
         'session_cookie'
       end
 
+      # returns if current request sets a new session id - used to send a context message
+      def context_changed?
+        new_session_id && new_session_id != request_cookie_session_id
+      end
+
       # returns the new session_id if its being set now
-      def setting_session_id_now
+      def new_session_id
         new_session = nil
         new_session = set_cookie_header.match(/_session_id=([^\;]+)/) if set_cookie_header
         @session_id = new_session[1] if new_session
@@ -57,7 +58,7 @@ module ContextRequestMiddleware
 
       def session_id
         # check for a new session id
-        setting_session_id_now
+        new_session_id
         # if NO new session id - get the current session id
         @session_id ||= request_cookie_session_id
       end
@@ -71,8 +72,7 @@ module ContextRequestMiddleware
       end
 
       def from_env(key, default = nil)
-        # @request.env.fetch(key, default)
-        ENV.fetch(key, default)
+        @request.env.fetch(key, default)
       end
     end
   end
